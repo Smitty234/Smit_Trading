@@ -1,0 +1,96 @@
+name: Daily Newsletter
+
+on:
+  schedule:
+    # 09:00 America/New_York. Two entries so the timing is correct
+    # across US daylight-saving changes:
+    #   EDT (Mar-Nov): 13:00 UTC
+    #   EST (Nov-Mar): 14:00 UTC
+    # The script inside checks actual ET and the "wrong" trigger is a
+    # cheap no-op.
+    - cron: "0 13 * * 1-5"
+    - cron: "0 14 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "Force build even on weekend/holiday"
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-newsletter
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Gate — only build at ~09:00 ET
+        id: gate
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime
+          import pytz
+          now = datetime.now(pytz.timezone("America/New_York"))
+          force = os.environ.get("FORCE") == "true"
+          # Allow dispatch force, or ET hour == 9
+          should = force or now.hour == 9
+          print(f"ET now: {now.isoformat()}  should_run={should}  force={force}")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as f:
+              f.write(f"should_run={'true' if should else 'false'}\n")
+          PY
+        env:
+          FORCE: ${{ inputs.force }}
+
+      - name: Weekly — refresh top-5 politicians (Sunday only)
+        if: steps.gate.outputs.should_run == 'true'
+        run: |
+          if [ "$(date -u +%u)" = "7" ]; then
+            python scripts/update_top_politicians.py || true
+          fi
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+
+      - name: Build newsletter
+        if: steps.gate.outputs.should_run == 'true'
+        run: |
+          python scripts/build_newsletter.py ${{ inputs.force && '--force' || '' }}
+        env:
+          SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+
+      - name: Commit and push
+        if: steps.gate.outputs.should_run == 'true'
+        run: |
+          git config user.name "smit-trading-bot"
+          git config user.email "smit-trading-bot@users.noreply.github.com"
+          git add docs/ config/politicians.yml || true
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+          else
+            git commit -m "daily: $(date -u +%Y-%m-%d) pre-market build"
+            for i in 1 2 3 4; do
+              if git push; then break; fi
+              sleep $((2 ** i))
+            done
+          fi
