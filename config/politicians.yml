@@ -1,0 +1,52 @@
+# Politicians whose disclosed trades feed into the smart-money signal.
+#
+# `anchor` is the always-tracked politician (per user decision: Pelosi).
+# `top5_auto` is populated weekly by scripts/update_top_politicians.py,
+# which pulls the CapitolTrades leaderboard sorted by 1-year performance
+# and writes the top 5 here. Seeded with reasonable defaults so the first
+# build has data to work with.
+
+anchor:
+  name: Nancy Pelosi
+  capitoltrades_id: "P000197"
+  chamber: House
+  party: D
+  state: CA
+  note: >
+    Best-known tracked trader. Heavy large-cap tech options exposure via
+    Paul Pelosi; directly relevant to MAG 7 focus.
+
+top5_auto:
+  # Seed list - overwritten weekly by update_top_politicians.py
+  - name: Ro Khanna
+    capitoltrades_id: "K000389"
+    chamber: House
+    party: D
+    state: CA
+  - name: Josh Gottheimer
+    capitoltrades_id: "G000583"
+    chamber: House
+    party: D
+    state: NJ
+  - name: Dan Crenshaw
+    capitoltrades_id: "C001120"
+    chamber: House
+    party: R
+    state: TX
+  - name: Michael McCaul
+    capitoltrades_id: "M001157"
+    chamber: House
+    party: R
+    state: TX
+  - name: Tommy Tuberville
+    capitoltrades_id: "T000278"
+    chamber: Senate
+    party: R
+    state: AL
+
+# Rule for flagging a smart-money signal: N or more of the tracked
+# politicians (anchor + top5) must have traded the same ticker in the
+# same direction within `window_days`.
+signal:
+  min_politicians: 2
+  window_days: 14

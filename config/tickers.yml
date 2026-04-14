@@ -1,0 +1,47 @@
+# Instruments tracked by the daily pre-market newsletter.
+# `yf` is the yfinance symbol. `tick` is the minimum clean rounding
+# used by levels.py when producing short/long trigger prices.
+
+indices:
+  - symbol: NQ
+    name: USA Tech 100 Futures (Nasdaq-100)
+    yf: "NQ=F"
+    tick: 25
+  - symbol: ES
+    name: S&P 500 Futures
+    yf: "ES=F"
+    tick: 5
+  - symbol: GC
+    name: Gold Futures
+    yf: "GC=F"
+    tick: 5
+
+mag7:
+  - symbol: AAPL
+    name: Apple
+    yf: AAPL
+    tick: 1
+  - symbol: MSFT
+    name: Microsoft
+    yf: MSFT
+    tick: 1
+  - symbol: GOOGL
+    name: Alphabet
+    yf: GOOGL
+    tick: 1
+  - symbol: AMZN
+    name: Amazon
+    yf: AMZN
+    tick: 1
+  - symbol: META
+    name: Meta Platforms
+    yf: META
+    tick: 1
+  - symbol: NVDA
+    name: NVIDIA
+    yf: NVDA
+    tick: 1
+  - symbol: TSLA
+    name: Tesla
+    yf: TSLA
+    tick: 1

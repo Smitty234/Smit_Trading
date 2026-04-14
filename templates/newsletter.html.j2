@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Smit Trading — Pre-Market Brief {{ generated_date }}</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+{% macro price_table(rows) %}
+<table class="prices">
+  <thead>
+    <tr>
+      <th>Symbol</th><th>Name</th><th>Prior Close</th><th>Pre-mkt</th><th>Gap %</th>
+      <th>Prior H / L</th><th>5-day H / L</th><th>ATR(5)</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for s in rows %}
+    <tr{% if s.error %} class="err"{% endif %}>
+      <td><strong>{{ s.symbol }}</strong></td>
+      <td class="muted">{{ s.name }}</td>
+      <td>{{ s.prior_close | num }}</td>
+      <td>{{ s.premarket | num }}</td>
+      <td class="{% if s.gap_pct and s.gap_pct > 0 %}pos{% elif s.gap_pct and s.gap_pct < 0 %}neg{% endif %}">
+        {{ s.gap_pct | signed(2) }}%</td>
+      <td>{{ s.prior_high | num }} / {{ s.prior_low | num }}</td>
+      <td><strong>{{ s.five_day_high | num }}</strong> / <strong>{{ s.five_day_low | num }}</strong></td>
+      <td>{{ s.atr5 | num }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endmacro %}
+
+<header class="top">
+  <div class="title">
+    <h1>Smit Trading</h1>
+    <span class="sub">Pre-Market Brief</span>
+  </div>
+  <div class="meta">
+    <div><strong>Session:</strong> {{ generated_date }}</div>
+    <div><strong>Updated:</strong> {{ generated_at_et }}</div>
+    <div><strong>Opens in:</strong> {{ minutes_to_open }} min</div>
+  </div>
+</header>
+
+<p class="disclaimer">Educational levels and ideas only. Not financial advice.
+You are responsible for your own trades.</p>
+
+<section>
+  <h2>Price Dashboard — 5-day High / Low</h2>
+  <h3>Indices &amp; Futures</h3>
+  {{ price_table(prices.indices) }}
+  <h3>Magnificent 7</h3>
+  {{ price_table(prices.mag7) }}
+</section>
+
+<section>
+  <h2>Actionable Trade Levels — NQ / ES / GC</h2>
+  <p class="muted">Short trigger = max(5-day high, prior high + 0.25·ATR5).
+    Long trigger = min(5-day low, prior low − 0.25·ATR5). Stops 0.5·ATR.</p>
+  <div class="level-grid">
+  {% for l in levels %}
+    <div class="level-card">
+      <div class="level-head">
+        <h3>{{ l.symbol }} <span class="muted">— {{ l.name }}</span></h3>
+        {% if l.premarket %}
+        <div class="pre">Pre-mkt: <strong>{{ l.premarket | num }}</strong></div>
+        {% endif %}
+      </div>
+      {% if l.short_trigger and l.long_trigger %}
+      <table class="levels">
+        <tr class="short">
+          <td class="tag">SHORT ▼</td>
+          <td class="tr">above <strong>{{ l.short_trigger | num }}</strong></td>
+          <td class="st">stop {{ l.short_stop | num }}</td>
+          <td class="tg">T1 {{ l.short_target_1r | num }} · T2 {{ l.short_target_2r | num }}</td>
+          <td class="d">{{ l.dist_to_short_pct | signed(2) }}%</td>
+        </tr>
+        <tr class="long">
+          <td class="tag">LONG ▲</td>
+          <td class="tr">below <strong>{{ l.long_trigger | num }}</strong></td>
+          <td class="st">stop {{ l.long_stop | num }}</td>
+          <td class="tg">T1 {{ l.long_target_1r | num }} · T2 {{ l.long_target_2r | num }}</td>
+          <td class="d">{{ l.dist_to_long_pct | signed(2) }}%</td>
+        </tr>
+      </table>
+      {% else %}
+      <p class="muted">{{ l.note }}</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+  </div>
+</section>
+
+<section>
+  <h2>Market Sentiment
+    <span class="pill pill-{{ sentiment.tone }}">{{ sentiment.tone | upper }}</span>
+  </h2>
+  <p class="muted">{{ sentiment.positive }} positive · {{ sentiment.negative }} negative ·
+    {{ sentiment.neutral }} neutral relevant headlines.</p>
+  {% if headlines %}
+  <ul class="headlines">
+    {% for h in headlines %}
+    <li class="s{{ h.sentiment }}">
+      <span class="time">{{ h.time }}</span>
+      <a href="{{ h.url }}" target="_blank" rel="noopener">{{ h.title }}</a>
+      <span class="source">{{ h.source }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="warn">News feed unavailable.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Today's Economic Calendar</h2>
+  {% if calendar %}
+  <table class="cal">
+    <tr><th>Time (ET)</th><th>Release</th><th>Impact</th></tr>
+    {% for e in calendar %}
+    <tr class="impact-{{ e.impact }}">
+      <td>{{ e.time }}</td><td>{{ e.release }}</td><td>{{ e.impact }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No high-impact US events scheduled (or calendar unavailable).</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Smart Money — Tracked Politicians</h2>
+  {% if politician_trades %}
+  <table class="trades">
+    <tr><th>Date</th><th>Politician</th><th>Side</th><th>Ticker</th><th>Size</th></tr>
+    {% for t in politician_trades %}
+    <tr class="side-{{ t.side }}">
+      <td>{{ t.trade_date }}</td>
+      <td>{{ t.politician }} <span class="muted">({{ t.party }}, {{ t.chamber }})</span></td>
+      <td class="side">{{ t.side | upper }}</td>
+      <td><strong>{{ t.ticker }}</strong> <span class="muted">{{ t.company }}</span></td>
+      <td>{{ t.size }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="warn">CapitolTrades unavailable.</p>
+  {% endif %}
+</section>
+
+<section>
+  <h2>Large Insider Filings (SEC Form 4, 7d)</h2>
+  {% if insider_trades %}
+  <table class="trades">
+    <tr><th>Date</th><th>Filer</th><th>Ticker</th><th>Form</th><th>Link</th></tr>
+    {% for i in insider_trades %}
+    <tr>
+      <td>{{ i.date_filed }}</td>
+      <td>{{ i.filer }}</td>
+      <td><strong>{{ i.ticker }}</strong></td>
+      <td>{{ i.form }}</td>
+      <td>{% if i.link %}<a href="{{ i.link }}" target="_blank" rel="noopener">SEC</a>{% endif %}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p class="muted">No qualifying Form 4 filings parsed.</p>
+  {% endif %}
+</section>
+
+<section class="ideas">
+  <h2>Smart-Money Trade Ideas</h2>
+  <p class="disclaimer-inline">Derived signals, not recommendations.</p>
+  <div class="ideas-grid">
+    <div>
+      <h3 class="long-hdr">Long Candidates ▲</h3>
+      {% if ideas.long %}
+      <ul>
+        {% for i in ideas.long %}
+        <li><strong>{{ i.ticker }}</strong> — score {{ i.score }}<br>
+          <span class="muted">{{ i.rationale }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No 2+ politician buy clusters in the window.</p>
+      {% endif %}
+    </div>
+    <div>
+      <h3 class="short-hdr">Short Candidates ▼</h3>
+      {% if ideas.short %}
+      <ul>
+        {% for i in ideas.short %}
+        <li><strong>{{ i.ticker }}</strong> — score {{ i.score }}<br>
+          <span class="muted">{{ i.rationale }}</span></li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <p class="muted">No 2+ politician sell clusters in the window.</p>
+      {% endif %}
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>Generated by <code>scripts/build_newsletter.py</code> ·
+     sources: yfinance, CapitolTrades, SEC EDGAR, Finviz ·
+     archive: <a href="archive/">archive/</a></p>
+</footer>
+</body>
+</html>
